@@ -1,13 +1,11 @@
 import config
+import sys
+
+reload(sys)
+sys.setdefaultencoding('utf8')
 
 class SensorAnalyzer(object):
     """docstring for SensorAnalyzer"""
-
-    temperature_limit_speed_0 = 25
-    temperature_limit_speed_1 = 27
-    temperature_limit_speed_2 = 30
-    luminosity_limit          = 100
-    allowed_access            = "22699470174"
 
     def __init__(self, mqtt_manager):
         super(SensorAnalyzer, self).__init__()
@@ -21,57 +19,67 @@ class SensorAnalyzer(object):
         self.auth = ""
 
         self.fan_speed = 0
-        self.light_bright = 0
+        self.light_state = 0
         self.gate_state = 0
 
     def notify(self, topic, message):
         if topic == config.ldr_topic:
             self.luminosity = int(message)
 
+            if self.presence:
+               self.analyze_luminosity()
+            else:
+                self.mqtt_manager.publish_value(config.light_topic, str(config.light_turn_off))
+
         elif topic == config.pir_topic:
             pir_value = int(message)
             self.presence = (pir_value == 1)
+
+            if self.presence:
+                self.analyze_temperature()
+                self.analyze_luminosity()
+            else:
+                self.mqtt_manager.publish_value(config.light_topic, str(config.light_turn_off))
+                self.mqtt_manager.publish_value(config.fan_topic, str(config.fan_speeds[0]))
 
         elif topic == config.ntc_topic:
             ntc_value = int(message)
             self.temperature = ntc_value
 
+            if self.presence:
+                self.analyze_temperature()
+            else:
+                self.mqtt_manager.publish_value(config.fan_topic, str(config.fan_speeds[0]))
+
         elif topic == config.auth_topic:
             self.auth = message
+            self.analyze_auth()
 
-        self.check_changes()
 
-    def check_changes(self):
-        if not self.presence:
-            self.fan_speed = 0
-            self.light_bright = 0
-            self.gate_state = 0
+    def analyze_luminosity(self):
+         # Analyze luminosity
+        if self.luminosity > config.luminosity_limit:
+            self.mqtt_manager.publish_value(config.light_topic, str(config.light_turn_off))
         else:
-            # Analyze temperature
-            if self.temperature > SensorAnalyzer.temperature_limit_speed_2:
-                self.fan_speed = 3
-            elif self.temperature > SensorAnalyzer.temperature_limit_speed_2:
-                self.fan_speed = 2
-            elif self.temperature > SensorAnalyzer.temperature_limit_speed_0:
-                self.fan_speed = 1
-            else:
-                self.fanSpeed = 0
+            self.mqtt_manager.publish_value(config.light_topic, str(config.light_turn_on))
 
-            # Analyze luminosity
-            if self.luminosity > SensorAnalyzer.luminosity_limit:
-                self.light_bright = 0
-            else:
-                self.light_bright = 255
+    def analyze_temperature(self):
+        # Analyze temperature
+        if self.temperature > config.temperature_limit_speed_2:
+            self.fan_speed = 3
+        elif self.temperature > config.temperature_limit_speed_2:
+            self.fan_speed = 2
+        elif self.temperature > config.temperature_limit_speed_0:
+            self.fan_speed = 1
+        else:
+            self.fanSpeed = 0
 
-            # Analyze auth
-            if self.auth == SensorAnalyzer.allowed_access:
-                self.gate_state = 1
-            else:
-                self.gate_state = 0
+        self.mqtt_manager.publish_value(config.fan_topic, str(config.fan_speeds[self.fan_speed]))
 
-        self.send_current_state()
+    def analyze_auth(self):
+        # Analyze auth
+        if self.auth == config.allowed_access:
+            self.mqtt_manager.publish_value(config.gate_topic, str(config.gate_open))
+        else:
+            self.mqtt_manager.publish_value(config.gate_topic, str(config.gate_close))
 
-    def send_current_state(self):
-        self.mqtt_manager.publish_value(config.fan_topic, str(self.fan_speed))
-        self.mqtt_manager.publish_value(config.light_topic, str(self.light_bright))
-        self.mqtt_manager.publish_value(config.gate_topic, str(self.gate_state))

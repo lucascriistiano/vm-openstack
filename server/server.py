@@ -1,4 +1,4 @@
-from manager import MqttManager
+from mqtt import MqttManager
 from analyzer import SensorAnalyzer
 import config
 
