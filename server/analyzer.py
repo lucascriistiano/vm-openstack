@@ -1,8 +1,4 @@
 import config
-import sys
-
-reload(sys)
-sys.setdefaultencoding('utf8')
 
 class SensorAnalyzer(object):
     """docstring for SensorAnalyzer"""
