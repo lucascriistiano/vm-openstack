@@ -5,8 +5,8 @@ serial['baudrate'] = 9600
 serial['timeout']  = 3
 
 # MQTT CONFIG
-# host = "10.9.98.162"
-host = "127.0.0.1"
+host = "10.9.98.162"
+# host = "127.0.0.1"
 port = 1883
 qos = 1
 

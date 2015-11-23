@@ -24,8 +24,6 @@ class SensorAnalyzer(object):
 
             if self.presence:
                self.analyze_luminosity()
-            else:
-                self.mqtt_manager.publish_value(config.light_topic, str(config.light_turn_off))
 
         elif topic == config.pir_topic:
             pir_value = int(message)
@@ -44,8 +42,6 @@ class SensorAnalyzer(object):
 
             if self.presence:
                 self.analyze_temperature()
-            else:
-                self.mqtt_manager.publish_value(config.fan_topic, str(config.fan_speeds[0]))
 
         elif topic == config.auth_topic:
             self.auth = message
